@@ -20,6 +20,9 @@ export const visionEvidenceSchema = z
       .max(6),
     waterDetected: z.boolean(),
     waterEvidence: z.enum(["NONE", "WEAK", "MODERATE", "STRONG"]),
+    // Validate citation values in the gate so unusable numeric citations
+    // downgrade water evidence instead of becoming a provider error.
+    waterSupportingFrames: z.array(z.number()).max(6),
     activeFlow: signal,
     persistentSource: signal,
     spreading: signal,
@@ -30,6 +33,25 @@ export const visionEvidenceSchema = z
   })
   .strict();
 export type VisionEvidence = z.infer<typeof visionEvidenceSchema>;
+
+export const waterGateEvidenceSchema = visionEvidenceSchema.pick({
+  quality: true,
+  qualityIssues: true,
+  waterDetected: true,
+  waterEvidence: true,
+  waterSupportingFrames: true,
+});
+
+export const temporalEvidenceSchema = z
+  .object({
+    activeFlow: signal,
+    activeFlowSupportingFrames: frames,
+    persistentSource: signal,
+    persistentSourceSupportingFrames: frames,
+    spreading: signal,
+    spreadingSupportingFrames: frames,
+  })
+  .strict();
 
 const recommendations: Record<Risk, string> = {
   NO_WATER:
@@ -70,19 +92,28 @@ function supported(value: Signal, indices: number[], minimum: number): Signal {
     : "UNCERTAIN";
 }
 
-export function scoreEvidence(raw: unknown): AnalysisResult {
-  const data = visionEvidenceSchema.parse(raw);
-  if (data.quality === "POOR" || data.qualityIssues.length > 0)
+// A null result means credible water passed the gate; temporal analysis may run.
+export function scoreWaterGate(raw: unknown): AnalysisResult | null {
+  const data = waterGateEvidenceSchema.parse(raw);
+  if (
+    data.quality === "POOR" ||
+    data.qualityIssues.some((issue) => issue !== "AMBIGUOUS")
+  )
     return uncertainResult();
+  const waterFrames = data.waterSupportingFrames.filter(
+    (index) => Number.isInteger(index) && index >= 0 && index <= 5,
+  );
+  const hasWaterSupport = supported("YES", waterFrames, 2) === "YES";
   if (
     !data.waterDetected ||
     data.waterEvidence === "NONE" ||
-    data.waterEvidence === "WEAK"
+    data.waterEvidence === "WEAK" ||
+    !hasWaterSupport
   ) {
     return {
       ...uncertainResult(),
       quality: "GOOD",
-      waterEvidence: data.waterEvidence,
+      waterEvidence: data.waterEvidence === "NONE" ? "NONE" : "WEAK",
       activeFlow: "UNCERTAIN",
       leakRisk: "NO_WATER",
       explanation:
@@ -90,6 +121,22 @@ export function scoreEvidence(raw: unknown): AnalysisResult {
       recommendation: recommendations.NO_WATER,
     };
   }
+  // Ambiguity alone cannot establish water on an otherwise usable recording.
+  // Preserve the existing quality handling after water passes the gate.
+  if (data.qualityIssues.length > 0) return uncertainResult();
+  return null;
+}
+
+export function scoreEvidence(raw: unknown): AnalysisResult {
+  const data = visionEvidenceSchema.parse(raw);
+  const gateResult = scoreWaterGate({
+    quality: data.quality,
+    qualityIssues: data.qualityIssues,
+    waterDetected: data.waterDetected,
+    waterEvidence: data.waterEvidence,
+    waterSupportingFrames: data.waterSupportingFrames,
+  });
+  if (gateResult) return gateResult;
   const activeFlow = supported(data.activeFlow, data.activeFlowFrames, 3);
   const source = supported(
     data.persistentSource,

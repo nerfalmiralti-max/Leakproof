@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { CreateReportInput, ReportStatus } from "@/domain/report";
 import { createDemoResult } from "@/lib/analysis/demo";
-import { getReportRepository } from "@/lib/reports";
+import { getIndexedDBRepository as getReportRepository } from "@/lib/reports/indexeddb-repository";
 
 const DB_NAME = "leakproof";
 
@@ -84,7 +84,7 @@ describe("IndexedDB report repository", () => {
     const report = await repository.create(input(), evidence);
 
     expect(report).toMatchObject({
-      isDemo: false,
+      isDemo: true,
       status: "NEW",
       description: input().description,
     });

@@ -54,7 +54,7 @@ export function ReportDetails({
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold">Report details</h2>
           <span className="rounded border border-line px-1.5 py-0.5 text-[9px] font-medium text-muted">
-            {report.isDemo ? "DEMO INCIDENT" : "LOCAL REPORT"}
+            {report.isDemo ? "DEMO INCIDENT" : "CITIZEN REPORT"}
           </span>
         </div>
       </div>

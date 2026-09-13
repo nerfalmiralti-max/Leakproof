@@ -10,6 +10,7 @@ const water: VisionEvidence = {
   qualityIssues: [],
   waterDetected: true,
   waterEvidence: "STRONG",
+  waterSupportingFrames: [0, 5],
   activeFlow: "NO",
   persistentSource: "NO",
   spreading: "NO",

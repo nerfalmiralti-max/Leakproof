@@ -22,8 +22,9 @@ export function ReportCreated({
         is on the map.
       </h2>
       <p className="mx-auto mt-4 max-w-sm text-[13px] leading-relaxed text-muted">
-        Your report and video have been saved on this device. You can review
-        them in the dispatcher dashboard.
+        {report.isDemo
+          ? "Your demo report and video have been saved on this device."
+          : "Your report and original video have been saved securely for dispatcher review from other devices."}
       </p>
       <div className="my-7 rounded-xl border border-line bg-paper p-5 text-left">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -38,7 +39,9 @@ export function ReportCreated({
         </p>
         <div className="mt-4 flex items-center gap-2 text-[11px]">
           <span className="h-1.5 w-1.5 rounded-full bg-green" />
-          New · Awaiting demo review
+          {report.isDemo
+            ? "New · Demo review"
+            : "New · Awaiting dispatcher review"}
         </div>
       </div>
       <Link
@@ -55,8 +58,10 @@ export function ReportCreated({
         <Plus size={16} /> Check another video
       </button>
       <p className="mt-6 text-[10px] leading-relaxed text-muted">
-        No city service has been notified. Reports are visible only in this
-        browser and may be lost if browser data is cleared.
+        No city service has been automatically notified.{" "}
+        {report.isDemo
+          ? "Demo reports stay in this browser and may be lost if browser data is cleared."
+          : "Shared reports are available to authorized dispatchers."}
       </p>
     </section>
   );

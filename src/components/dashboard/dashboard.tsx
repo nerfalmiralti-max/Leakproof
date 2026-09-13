@@ -24,6 +24,8 @@ import { AktauMap } from "../map/aktau-map";
 import { ErrorNotice } from "../ui";
 import { IncidentList } from "./incident-list";
 import { ReportDetails } from "./report-details";
+import { DispatcherAccess } from "./dispatcher-access";
+import { getDispatcherKey } from "@/lib/reports/remote-repository";
 
 export function Dashboard() {
   const params = useSearchParams();
@@ -36,6 +38,7 @@ export function Dashboard() {
     params.get("report"),
   );
   const [notice, setNotice] = useState<string | null>(null);
+  const [unlocked, setUnlocked] = useState(false);
   const details = useRef<HTMLDivElement>(null);
   const loadRequest = useRef(0);
   const loadReports = useCallback((signal?: AbortSignal) => {
@@ -45,16 +48,20 @@ export function Dashboard() {
       .then((data) => {
         if (!signal?.aborted && request === loadRequest.current) {
           setReports(data);
+          setUnlocked(Boolean(getDispatcherKey()));
           setError(null);
         }
       })
       .catch((failure) => {
-        if (!signal?.aborted && request === loadRequest.current)
+        if (!signal?.aborted && request === loadRequest.current) {
+          setReports([]);
+          setUnlocked(false);
           setError(
             failure instanceof Error
               ? failure.message
               : "Reports could not be loaded. Please try again.",
           );
+        }
       })
       .finally(() => {
         if (!signal?.aborted && request === loadRequest.current)
@@ -65,6 +72,12 @@ export function Dashboard() {
     setLoading(true);
     setError(null);
     void loadReports();
+  }
+  function accessChanged() {
+    setReports([]);
+    setSelectedId(null);
+    setNotice(null);
+    refresh();
   }
   useEffect(() => {
     const controller = new AbortController();
@@ -120,7 +133,8 @@ export function Dashboard() {
           </div>
           <div className="flex items-center gap-4">
             <span className="hidden items-center gap-1.5 text-[11px] text-muted sm:flex">
-              <span className="h-1.5 w-1.5 rounded-full bg-green" /> Local demo
+              <span className="h-1.5 w-1.5 rounded-full bg-green" />{" "}
+              {unlocked ? "Shared reports" : "Demo only · locked"}
             </span>
             <Link
               href="/scan"
@@ -154,6 +168,7 @@ export function Dashboard() {
           </button>
         </div>
         <DemoNotice compact mode="workspace" />
+        <DispatcherAccess onChange={accessChanged} />
         <div className="my-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
             {

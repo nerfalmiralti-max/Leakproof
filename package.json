@@ -17,6 +17,8 @@
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.8",
     "@fontsource/manrope": "^5.2.8",
+    "@supabase/supabase-js": "2.116.0",
+    "file-type": "22.1.0",
     "idb": "^8.0.3",
     "leaflet": "1.9.4",
     "lucide-react": "^0.577.0",

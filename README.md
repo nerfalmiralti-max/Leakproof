@@ -28,19 +28,24 @@ To enable real vision analysis:
 ```dotenv
 ANALYSIS_PROVIDER=openai
 OPENAI_API_KEY=your_server_side_key
-OPENAI_VISION_MODEL=gpt-4.1-mini
+OPENAI_WATER_GATE_MODEL=gpt-4.1-mini
+OPENAI_TEMPORAL_MODEL=gpt-5.6-terra
 ```
 
 Restart the local server after changing configuration. Set the same variables in Vercel and redeploy. Never use a `NEXT_PUBLIC_` variable for the API key. Server modules are marked `server-only`.
 
-**No live provider call has been verified without an API key.** Automated tests use controlled responses and never spend API credits. A missing key, timeout, refusal, malformed response or network failure produces a safe error. Real mode never silently switches to demo.
+These stage-specific settings default to the models shown above. The deprecated `OPENAI_VISION_MODEL` is no longer used; migrate it to the two explicit settings to avoid assigning one model both jobs. The public analysis result and saved-report formats remain compatible.
+
+Automated tests use controlled responses and never spend API credits. A missing key, timeout, refusal, malformed response or network failure produces a safe error. There are no automatic retries or fallback models. Server diagnostics identify the failing stage, with sanitized provider errors; API keys and image payloads are not logged or exposed to the browser.
 
 ## Analysis architecture
 
 ```text
 Original video → browser validation → 6 sampled JPEG frames
-→ server request validation → one structured OpenAI vision request
-→ quality gate → water gate → temporal evidence validation
+→ server request validation → gpt-4.1-mini quality/water gate
+  → poor quality: UNCERTAIN and stop
+  → insufficient water: NO_WATER and stop
+  → confirmed water: gpt-5.6-terra temporal evidence → validation
 → deterministic risk rules → explanation and recommendation
 ```
 
@@ -49,7 +54,7 @@ Original video → browser validation → 6 sampled JPEG frames
 - `src/lib/analysis/frames.ts` — browser-native video decoding, canvas sampling and cleanup.
 - `src/lib/analysis/real-provider.ts` — real client adapter; calls only the app server.
 - `src/app/api/analyze/route.ts` — bounded request parsing, validation and safe errors.
-- `src/lib/analysis/openai-server.ts` — OpenAI Responses API, strict JSON schema, 28-second timeout and `store: false`.
+- `src/lib/analysis/openai-server.ts` — two sequential OpenAI Responses API stages, separate strict JSON schemas, a shared 28-second deadline and `store: false`.
 - `src/lib/analysis/scoring.ts` — categorical evidence validation and deterministic risk/explanations.
 - `src/lib/analysis/result-schema.ts` — shared validation of API results and persisted analyses.
 - `src/lib/reports/` — IndexedDB implementation, separate report/video stores and transactional creation.
@@ -57,7 +62,9 @@ Original video → browser validation → 6 sampled JPEG frames
 
 The provider accepts both video metadata and the original blob. The real adapter extracts six moments distributed from 0.1 seconds to 0.1 seconds before the end, resizes the longest edge to at most 960 pixels and compresses JPEGs. The server accepts exactly six chronological frames and caps the complete request at 2.2 MB. No native FFmpeg binary is deployed, keeping this path suitable for Vercel. FFmpeg is used only by the optional test-fixture generator.
 
-The model returns quality, categorical water evidence, three categorical temporal signals and supporting frame indices. It is instructed to stop at inadequate quality or water evidence; application gates discard downstream claims regardless. The application never parses arbitrary prose to choose risk. Model observations are not displayed directly: explanations and recommendations are assembled from validated categories.
+Stage 1 returns only quality, quality issues, water presence, categorical water evidence and supporting frame indices. Application code requires at least two distinct valid indices 0–5 spanning at least three positions before calling Stage 2. Dry or unusable recordings use one provider call; confirmed water uses two. Inputs rejected by server validation may use no provider calls.
+
+Stage 2 receives the same chronological frames and is told water is established. It returns only flow, source and spreading signals with their supporting frame indices. It cannot override water evidence or choose risk. Terra requests omit the unsupported `temperature` parameter. The application never parses arbitrary prose to choose risk: existing deterministic rules assemble the final result, explanations and recommendations. Ambiguous temporal evidence can still produce `UNCERTAIN` after water passes the gate.
 
 ## Deterministic risk rules
 

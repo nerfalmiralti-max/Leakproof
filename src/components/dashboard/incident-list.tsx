@@ -91,7 +91,7 @@ export function IncidentList({
       <div className="max-h-[450px] overflow-y-auto lg:max-h-none lg:flex-1">
         {loading ? (
           <div role="status" className="p-8 text-center text-xs text-muted">
-            Loading local reports…
+            Loading reports…
           </div>
         ) : reports.length === 0 ? (
           <EmptyState

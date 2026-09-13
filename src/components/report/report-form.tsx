@@ -237,9 +237,9 @@ export function ReportForm({
         </div>
         <ErrorNotice message={error} />
         <div className="rounded-lg bg-paper p-3 text-[11px] leading-relaxed text-muted">
-          Your video, assessment and location will be stored together in this
-          browser. This demo does not contact the city or dispatch an
-          inspection.
+          {result.provider === "demo"
+            ? "This demo report and video stay in this browser. No city service is contacted."
+            : "Submitting uploads your original video, assessment and location to private shared storage for dispatcher review. No city service is automatically notified."}
         </div>
         <button
           type="submit"

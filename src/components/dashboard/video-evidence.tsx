@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Video, VideoOff } from "lucide-react";
 import type { LeakReport } from "@/domain/report";
 import { getReportRepository } from "@/lib/reports";
+import { getSignedEvidenceUrl } from "@/lib/reports/remote-repository";
 
 export function VideoEvidence({ report }: { report: LeakReport }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -11,16 +12,21 @@ export function VideoEvidence({ report }: { report: LeakReport }) {
     if (!report.evidenceId) return;
     let active = true;
     let objectUrl: string | undefined;
-    getReportRepository()
-      .getEvidence(report.evidenceId)
+    (report.isDemo
+      ? getReportRepository().getEvidence(report.evidenceId)
+      : getSignedEvidenceUrl(report.evidenceId)
+    )
       .then((blob) => {
         if (!active) return;
         if (!blob) {
-          setError("The original video is not available in this browser.");
+          setError("The original video evidence is unavailable.");
           return;
         }
-        objectUrl = URL.createObjectURL(blob);
-        setUrl(objectUrl);
+        if (typeof blob === "string") setUrl(blob);
+        else {
+          objectUrl = URL.createObjectURL(blob);
+          setUrl(objectUrl);
+        }
       })
       .catch((failure) => {
         if (active)
@@ -34,7 +40,7 @@ export function VideoEvidence({ report }: { report: LeakReport }) {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [report.evidenceId]);
+  }, [report.evidenceId, report.isDemo]);
   if (report.isDemo && !report.evidenceId)
     return (
       <div className="flex min-h-32 flex-col items-center justify-center rounded-lg border border-dashed border-line bg-paper p-4 text-center">
