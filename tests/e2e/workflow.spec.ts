@@ -49,7 +49,7 @@ test("landing renders an actual map and links into the scan", async ({
   expect(errors).toEqual([]);
 });
 
-test("video report retains original evidence and saved status after reload", async ({
+test("demo report stays local and does not appear in the dispatcher workspace", async ({
   page,
   context,
 }, testInfo) => {
@@ -98,45 +98,32 @@ test("video report retains original evidence and saved status after reload", asy
     fullPage: true,
   });
   await page.getByRole("link", { name: "View report in dashboard" }).click();
-  const details = page.getByRole("region", { name: "Selected report details" });
   await expect(
-    details.getByRole("heading", {
-      name: "Test observation, microdistrict 14",
+    page.getByText("Unlock the dispatcher workspace to load shared reports.", {
+      exact: true,
     }),
   ).toBeVisible();
-  const evidence = page.getByLabel("Report video evidence");
-  await expect(evidence).toBeVisible();
-  await expect
-    .poll(() => evidence.evaluate((node: HTMLVideoElement) => node.readyState))
-    .toBeGreaterThanOrEqual(1);
-  expect(
-    await evidence.evaluate((node: HTMLVideoElement) => node.duration),
-  ).toBeGreaterThanOrEqual(5);
-  await page.getByLabel("Update report status").selectOption("IN_REVIEW");
-  await page.getByRole("button", { name: "Save status", exact: true }).click();
+  await expect(page.locator(".map-shell .leaflet-container")).toBeVisible();
+  await expect(page.locator(".map-shell .incident-marker")).toHaveCount(0);
   await expect(
-    page.getByRole("status").filter({ hasText: /status saved/i }),
-  ).toBeVisible();
+    page.getByRole("region", { name: "Incident list" }).getByRole("listitem"),
+  ).toHaveCount(0);
+  await expect(page.getByLabel("Report video evidence")).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Selected report details" }),
+  ).toHaveCount(0);
   await page.reload();
-  await expect(page.getByLabel("Update report status")).toHaveValue(
-    "IN_REVIEW",
-  );
-  await expect(page.getByLabel("Report video evidence")).toBeVisible();
+  await expect(
+    page.getByText("Unlock the dispatcher workspace to load shared reports.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".map-shell .incident-marker")).toHaveCount(0);
   await noOverflow(page);
   await page.screenshot({
     path: testInfo.outputPath("dashboard.png"),
     fullPage: true,
   });
-  await page.getByLabel("Risk level", { exact: true }).selectOption("LOW");
-  await expect(
-    details.getByRole("heading", {
-      name: "Test observation, microdistrict 14",
-    }),
-  ).toHaveCount(0);
-  await page.getByLabel("Status", { exact: true }).selectOption("IN_REVIEW");
-  await expect(
-    page.getByText("No matching reports", { exact: true }),
-  ).toBeVisible();
   expect(errors).toEqual([]);
 });
 

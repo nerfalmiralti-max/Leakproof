@@ -149,12 +149,15 @@ export function ReportDetails({
               role="status"
               className="mt-2 flex items-center gap-1 text-[11px] text-green"
             >
-              <Check size={13} /> Status saved on this device.
+              <Check size={13} />{" "}
+              {report.isDemo
+                ? "Demo status saved on this device."
+                : "Status saved for all dispatchers."}
             </p>
           )}
           <p className="mt-3 text-[10px] leading-relaxed text-muted">
-            Status changes are for this demo only. No inspection team is
-            dispatched.
+            Status changes record the review decision. No inspection team is
+            automatically dispatched.
           </p>
         </form>
       </div>

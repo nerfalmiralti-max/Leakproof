@@ -8,6 +8,7 @@ import { getSignedEvidenceUrl } from "@/lib/reports/remote-repository";
 export function VideoEvidence({ report }: { report: LeakReport }) {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!report.evidenceId) return;
     let active = true;
@@ -40,7 +41,7 @@ export function VideoEvidence({ report }: { report: LeakReport }) {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [report.evidenceId, report.isDemo]);
+  }, [report.evidenceId, report.isDemo, attempt]);
   if (report.isDemo && !report.evidenceId)
     return (
       <div className="flex min-h-32 flex-col items-center justify-center rounded-lg border border-dashed border-line bg-paper p-4 text-center">
@@ -54,9 +55,20 @@ export function VideoEvidence({ report }: { report: LeakReport }) {
     );
   if (error)
     return (
-      <p role="alert" className="rounded-lg bg-red-50 p-4 text-xs text-red-800">
-        {error}
-      </p>
+      <div className="rounded-lg bg-red-50 p-4 text-xs text-red-800">
+        <p role="alert">{error}</p>
+        <button
+          type="button"
+          className="btn btn-secondary mt-3"
+          onClick={() => {
+            setError(null);
+            setUrl(null);
+            setAttempt((value) => value + 1);
+          }}
+        >
+          Reload video
+        </button>
+      </div>
     );
   if (!url)
     return (
@@ -78,13 +90,13 @@ export function VideoEvidence({ report }: { report: LeakReport }) {
         aria-label="Report video evidence"
         onError={() =>
           setError(
-            "This browser cannot play this recording. Try opening it in the browser used to record it.",
+            "The video could not be played or its access link expired. Reload the video; if it still fails, try a browser that supports this recording format.",
           )
         }
       />
       <p className="mt-2 truncate text-[10px] text-muted">
         {report.video?.name} · {report.video?.duration.toFixed(1)} sec ·
-        Original local recording
+        Original recording
       </p>
     </div>
   );

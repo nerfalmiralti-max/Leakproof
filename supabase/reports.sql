@@ -31,6 +31,7 @@ create index reports_created_at_idx on public.reports (created_at desc, id);
 create index reports_status_risk_idx on public.reports (status, risk);
 alter table public.reports enable row level security;
 revoke all on table public.reports from public, anon, authenticated;
+grant usage on schema public to service_role;
 grant select, insert, update, delete on table public.reports to service_role;
 -- No public table policies. Service-role access is only through server endpoints.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

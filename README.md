@@ -6,7 +6,7 @@ LeakProof assesses **visible signs that may justify inspection**. It does not di
 
 ## Run
 
-Node.js 20.9+ and npm are required; Node.js 24.16.0 was used for verification.
+Node.js 22+ and npm are required; Node.js 24.16.0 was used for verification.
 
 ```sh
 npm ci
@@ -57,7 +57,7 @@ Original video → browser validation → 6 sampled JPEG frames
 - `src/lib/analysis/openai-server.ts` — two sequential OpenAI Responses API stages, separate strict JSON schemas, a shared 28-second deadline and `store: false`.
 - `src/lib/analysis/scoring.ts` — categorical evidence validation and deterministic risk/explanations.
 - `src/lib/analysis/result-schema.ts` — shared validation of API results and persisted analyses.
-- `src/lib/reports/` — IndexedDB implementation, separate report/video stores and transactional creation.
+- `src/lib/reports/` — shared Supabase report service, remote repository and separate IndexedDB demo storage.
 - `src/components/` — existing scan, report, dashboard and map components.
 
 The provider accepts both video metadata and the original blob. The real adapter extracts six moments distributed from 0.1 seconds to 0.1 seconds before the end, resizes the longest edge to at most 960 pixels and compresses JPEGs. The server accepts exactly six chronological frames and caps the complete request at 2.2 MB. No native FFmpeg binary is deployed, keeping this path suitable for Vercel. FFmpeg is used only by the optional test-fixture generator.
@@ -91,9 +91,11 @@ After the gates:
 
 Only the six JPEG frames and timestamps are sent to OpenAI. The full video, audio, geolocation, filename and report description are not sent to that provider. The app does not persist processing frames on the server; browser object URLs and canvas buffers are cleaned up. `store: false` disables Responses storage; it is not a claim of zero provider retention. See [OpenAI data controls](https://developers.openai.com/api/docs/guides/your-data).
 
-Creating a report explicitly stores the original video, assessment and location in the current browser's IndexedDB. These records are local to that browser profile and origin, subject to quota/eviction, and removed when site data is cleared. Nothing is sent to city services. Six sample incidents have explicit demo labels and no fabricated video evidence. Real and demo reports retain distinct analysis provenance after reload.
+Submitting a real report stores the original video in private Supabase Storage and its assessment/location in PostgreSQL. The server validates metadata, analysis consistency and uploaded file signatures. A server-issued signed upload URL keeps videos up to 50 MB outside Vercel's 4.5 MB request-body limit. The report is confirmed only after the database insert succeeds. There is no local fallback for real submissions.
 
-The async `ReportRepository` can be replaced with a Supabase adapter without rebuilding the UI. Shared storage, dispatcher authentication, access policies and private evidence playback belong to that next integration. No Supabase resource has been provisioned.
+Dispatchers unlock `/dashboard` with a shared access key stored only in that tab's sessionStorage, then refresh to fetch reports across devices. Evidence links expire after five minutes. Demo incidents and demo submissions remain explicitly labelled and local to IndexedDB; they are never uploaded. Previously stored real IndexedDB reports are not automatically uploaded or presented as shared reports. Nothing automatically notifies city services.
+
+Run the migration and configure Supabase/Vercel using [SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md). Automated tests mock Supabase; they do not establish that a deployed project is configured correctly. The two-device acceptance test is required before claiming live cloud integration works.
 
 ## Verification
 

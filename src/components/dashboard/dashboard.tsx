@@ -19,7 +19,6 @@ import type { LeakReport, ReportStatus } from "@/domain/report";
 import { getReportRepository } from "@/lib/reports";
 import { RISK_META } from "@/lib/presentation";
 import { Brand } from "../brand";
-import { DemoNotice } from "../demo-notice";
 import { AktauMap } from "../map/aktau-map";
 import { ErrorNotice } from "../ui";
 import { IncidentList } from "./incident-list";
@@ -74,6 +73,7 @@ export function Dashboard() {
     void loadReports();
   }
   function accessChanged() {
+    setUnlocked(false);
     setReports([]);
     setSelectedId(null);
     setNotice(null);
@@ -134,7 +134,7 @@ export function Dashboard() {
           <div className="flex items-center gap-4">
             <span className="hidden items-center gap-1.5 text-[11px] text-muted sm:flex">
               <span className="h-1.5 w-1.5 rounded-full bg-green" />{" "}
-              {unlocked ? "Shared reports" : "Demo only · locked"}
+              {unlocked ? "Shared reports" : "Protected workspace"}
             </span>
             <Link
               href="/scan"
@@ -167,7 +167,11 @@ export function Dashboard() {
             {loading ? "Refreshing…" : "Refresh reports"}
           </button>
         </div>
-        <DemoNotice compact mode="workspace" />
+        <p className="mb-4 text-xs text-muted">
+          {unlocked
+            ? "Real submitted observations. No city service is automatically notified."
+            : "Unlock the dispatcher workspace to load shared reports."}
+        </p>
         <DispatcherAccess onChange={accessChanged} />
         <div className="my-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
@@ -175,7 +179,7 @@ export function Dashboard() {
               icon: ClipboardList,
               label: "Total reports",
               value: reports.length,
-              note: "Samples + local reports",
+              note: "Shared reports",
               color: "bg-[#eaf0e5] text-green",
             },
             {
@@ -196,7 +200,7 @@ export function Dashboard() {
               icon: CheckCircle2,
               label: "Resolved",
               value: resolvedCount,
-              note: "Marked resolved in demo",
+              note: "Marked resolved",
               color: "bg-[#edf0e6] text-[#6b7850]",
             },
           ].map((stat) => (
@@ -209,11 +213,13 @@ export function Dashboard() {
                   {stat.label}
                 </p>
                 <p className="my-2 font-display text-[27px] leading-none font-bold tracking-[-1px]">
-                  {loading && reports.length === 0
+                  {!unlocked || (loading && reports.length === 0)
                     ? "—"
                     : stat.value.toString().padStart(2, "0")}
                 </p>
-                <p className="text-[9px] text-muted">{stat.note}</p>
+                <p className="text-[9px] text-muted">
+                  {unlocked ? stat.note : "Reports not loaded"}
+                </p>
               </div>
               <span
                 className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${stat.color}`}
@@ -246,6 +252,7 @@ export function Dashboard() {
             onStatus={setStatus}
             onSelect={select}
             loading={loading && reports.length === 0}
+            locked={!unlocked}
           />
           <section className="overflow-hidden rounded-xl border border-line bg-white">
             <div className="flex h-15 items-center justify-between px-5">
@@ -302,7 +309,7 @@ export function Dashboard() {
         </div>
         <footer className="mt-6 flex flex-col justify-between gap-2 text-[10px] text-muted sm:flex-row">
           <p>LeakProof · Community signals. Human decisions.</p>
-          <p>Demo workspace · No connection to city services</p>
+          <p>Shared reports · No automatic city notification</p>
         </footer>
       </main>
     </div>

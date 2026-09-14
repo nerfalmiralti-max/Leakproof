@@ -14,6 +14,7 @@ type Props = {
   onStatus: (status: ReportStatus | "ALL") => void;
   onSelect: (id: string) => void;
   loading: boolean;
+  locked: boolean;
 };
 
 export function IncidentList({
@@ -25,6 +26,7 @@ export function IncidentList({
   onStatus,
   onSelect,
   loading,
+  locked,
 }: Props) {
   return (
     <section
@@ -36,7 +38,7 @@ export function IncidentList({
           <h2 className="text-sm font-bold">
             Incident reports{" "}
             <span className="ml-1.5 rounded bg-paper px-1.5 py-0.5 font-sans text-xs text-muted">
-              {reports.length}
+              {locked ? "—" : reports.length}
             </span>
           </h2>
           <SlidersHorizontal size={15} className="text-muted" />
@@ -95,8 +97,20 @@ export function IncidentList({
           </div>
         ) : reports.length === 0 ? (
           <EmptyState
-            title="No matching reports"
-            description="Try another risk level or status to see more incidents."
+            title={
+              locked
+                ? "Reports not loaded"
+                : risk === "ALL" && status === "ALL"
+                  ? "No shared reports yet"
+                  : "No matching reports"
+            }
+            description={
+              locked
+                ? "The dispatcher workspace is protected."
+                : risk === "ALL" && status === "ALL"
+                  ? "Real submitted observations will appear here."
+                  : "Try another risk level or status to see more reports."
+            }
           />
         ) : (
           <ul className="divide-y divide-line">
@@ -111,7 +125,7 @@ export function IncidentList({
                   <div className="flex items-center justify-between gap-2">
                     <RiskBadge result={report.analysis} />
                     <span className="text-[9px] font-medium text-muted">
-                      {report.isDemo ? "SAMPLE" : "LOCAL"}
+                      SHARED
                     </span>
                   </div>
                   <h3 className="mt-3 flex items-start justify-between gap-2 text-[13px] leading-relaxed font-bold">
@@ -143,7 +157,9 @@ export function IncidentList({
         )}
       </div>
       <div className="border-t border-line px-5 py-3 text-[10px] text-muted">
-        {reports.length} matching reports · Stored on this device
+        {locked
+          ? "Protected workspace · Reports not loaded"
+          : `${reports.length} matching shared reports`}
       </div>
     </section>
   );

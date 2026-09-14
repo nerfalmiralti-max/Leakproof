@@ -9,3 +9,8 @@ test-results/
 !.env.example
 *.log
 tmp/
+# Local review screenshots and recordings (keep public assets and test fixtures).
+/*Codex*.png
+/*.mp4
+/*.webm
+/*.mov

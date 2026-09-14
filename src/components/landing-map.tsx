@@ -44,7 +44,7 @@ export function LandingMap() {
             A clearer picture for the city
           </span>
           <span className="mt-1 block text-[11px] text-muted">
-            Explore sample reports across Aktau
+            Open the protected dispatcher workspace
           </span>
         </span>
         <ArrowUpRight size={20} />
