@@ -24,6 +24,8 @@ test("extracts six genuine JPEG frames and presents categorical real evidence", 
     activeFlowFrames: [0, 2, 5],
     persistentSourceFrames: [0, 3, 5],
     spreadingFrames: [0, 5],
+    sourceType: "SUSPICIOUS_SOURCE",
+    sourceSupportingFrames: [0, 5],
     evidence: [],
   });
   await page.route("**/api/analyze", async (route) => {

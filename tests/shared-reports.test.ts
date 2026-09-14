@@ -27,6 +27,8 @@ const input = {
     persistentSourceFrames: [0, 3, 5],
     spreading: "NO",
     spreadingFrames: [],
+    sourceType: "SUSPICIOUS_SOURCE",
+    sourceSupportingFrames: [0, 5],
     evidence: [],
   }),
   location: { lat: 43.65, lng: 51.16 },

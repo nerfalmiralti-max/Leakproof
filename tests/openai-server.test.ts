@@ -6,6 +6,8 @@ import { scoreEvidence } from "@/lib/analysis/scoring";
 import { POST } from "@/app/api/analyze/route";
 
 const observations = {
+  sourceType: "SUSPICIOUS_SOURCE",
+  sourceSupportingFrames: [0, 5],
   quality: "GOOD",
   qualityIssues: [],
   waterDetected: true,
@@ -27,6 +29,8 @@ const gateObservations = {
   waterSupportingFrames: observations.waterSupportingFrames,
 };
 const temporalObservations = {
+  sourceType: observations.sourceType,
+  sourceSupportingFrames: observations.sourceSupportingFrames,
   activeFlow: observations.activeFlow,
   activeFlowSupportingFrames: observations.activeFlowFrames,
   persistentSource: observations.persistentSource,

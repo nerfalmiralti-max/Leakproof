@@ -7,6 +7,8 @@ export type AnalysisStage =
 export type AnalysisMode = "demo" | "openai";
 export type Signal = "NO" | "UNCERTAIN" | "YES";
 export type WaterEvidence = "NONE" | "WEAK" | "MODERATE" | "STRONG";
+export type SourceType =
+  "CONTROLLED_SOURCE" | "UNCERTAIN_SOURCE" | "SUSPICIOUS_SOURCE";
 
 export interface AnalysisResult {
   waterDetected: boolean;
@@ -22,4 +24,5 @@ export interface AnalysisResult {
   waterEvidence?: WaterEvidence;
   activeFlow?: Signal;
   quality?: "GOOD" | "POOR";
+  sourceType?: SourceType;
 }

@@ -25,7 +25,11 @@ export function AnalysisResult({
           <RiskBadge result={result} />
         </div>
         <h2 className="text-2xl leading-snug font-bold tracking-[-.7px]">
-          {RISK_META[result.leakRisk].headline}
+          {result.provider === "openai" &&
+          result.sourceType === "CONTROLLED_SOURCE" &&
+          result.leakRisk === "LOW"
+            ? "Expected water source detected"
+            : RISK_META[result.leakRisk].headline}
         </h2>
         <p className="mt-2 text-xs leading-relaxed text-muted">
           {result.provider === "demo" && result.scenario

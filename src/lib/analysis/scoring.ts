@@ -1,8 +1,18 @@
 import { z } from "zod";
-import type { AnalysisResult, Risk, Signal } from "@/domain/analysis";
+import type {
+  AnalysisResult,
+  Risk,
+  Signal,
+  SourceType,
+} from "@/domain/analysis";
 
 const signal = z.enum(["NO", "UNCERTAIN", "YES"]);
 const frames = z.array(z.number().int().min(0).max(5)).max(6);
+const sourceType = z.enum([
+  "CONTROLLED_SOURCE",
+  "UNCERTAIN_SOURCE",
+  "SUSPICIOUS_SOURCE",
+]);
 export const visionEvidenceSchema = z
   .object({
     quality: z.enum(["GOOD", "POOR"]),
@@ -30,6 +40,8 @@ export const visionEvidenceSchema = z
     persistentSourceFrames: frames,
     spreadingFrames: frames,
     evidence: z.array(z.string().max(180)).max(4),
+    sourceType: sourceType.default("UNCERTAIN_SOURCE"),
+    sourceSupportingFrames: frames.default([]),
   })
   .strict();
 export type VisionEvidence = z.infer<typeof visionEvidenceSchema>;
@@ -50,6 +62,8 @@ export const temporalEvidenceSchema = z
     persistentSourceSupportingFrames: frames,
     spreading: signal,
     spreadingSupportingFrames: frames,
+    sourceType,
+    sourceSupportingFrames: frames,
   })
   .strict();
 
@@ -80,6 +94,27 @@ export function uncertainResult(): AnalysisResult {
     explanation: "Evidence is insufficient for a reliable assessment.",
     recommendation: recommendations.UNCERTAIN,
   };
+}
+
+// Persistence describes flow, not its cause. Only a suspicious source can elevate risk.
+export function deriveLeakRisk(
+  waterEvidence: string,
+  signals: Signal[],
+  source: SourceType,
+): Risk {
+  if (source === "UNCERTAIN_SOURCE") return "UNCERTAIN";
+  if (
+    signals[0] === "UNCERTAIN" ||
+    signals.filter((value) => value === "UNCERTAIN").length >= 2
+  )
+    return "UNCERTAIN";
+  if (source === "CONTROLLED_SOURCE") return "LOW";
+  const yes = signals.filter((value) => value === "YES").length;
+  return waterEvidence === "STRONG" && yes === 3
+    ? "HIGH"
+    : yes > 0
+      ? "MEDIUM"
+      : "LOW";
 }
 
 function supported(value: Signal, indices: number[], minimum: number): Signal {
@@ -145,6 +180,29 @@ export function scoreEvidence(raw: unknown): AnalysisResult {
   );
   const spreading = supported(data.spreading, data.spreadingFrames, 2);
   const signals = [activeFlow, source, spreading];
+  const assessedSource =
+    supported("YES", data.sourceSupportingFrames, 2) === "YES"
+      ? data.sourceType
+      : "UNCERTAIN_SOURCE";
+  const observed = {
+    activeFlow,
+    persistentSource: source === "UNCERTAIN" ? null : source === "YES",
+    spreadingDetected: spreading === "UNCERTAIN" ? null : spreading === "YES",
+    sourceType: assessedSource,
+  };
+  if (assessedSource === "UNCERTAIN_SOURCE") {
+    return {
+      ...uncertainResult(),
+      ...observed,
+      quality: "GOOD",
+      waterDetected: true,
+      waterEvidence: data.waterEvidence,
+      explanation:
+        activeFlow === "YES"
+          ? "Active water flow is visible, but the source cannot be reliably classified from the sampled frames. Persistence alone does not establish a leak."
+          : "Water is visible, but its source cannot be reliably classified from the sampled frames. No uncontrolled leak is established.",
+    };
+  }
   if (
     activeFlow === "UNCERTAIN" ||
     signals.filter((value) => value === "UNCERTAIN").length >= 2
@@ -154,18 +212,31 @@ export function scoreEvidence(raw: unknown): AnalysisResult {
       quality: "GOOD",
       waterDetected: true,
       waterEvidence: data.waterEvidence,
+      sourceType: assessedSource,
       explanation:
         "Water is visible, but temporal evidence is insufficient to assess sustained flow reliably.",
     };
   }
   const yesCount = signals.filter((value) => value === "YES").length;
-  const leakRisk: Risk =
-    data.waterEvidence === "STRONG" && yesCount === 3
-      ? "HIGH"
-      : yesCount > 0
-        ? "MEDIUM"
-        : "LOW";
+  const leakRisk = deriveLeakRisk(data.waterEvidence, signals, assessedSource);
+  if (assessedSource === "CONTROLLED_SOURCE") {
+    return {
+      ...uncertainResult(),
+      ...observed,
+      quality: "GOOD",
+      waterDetected: true,
+      waterEvidence: data.waterEvidence,
+      leakRisk,
+      explanation:
+        "Water is visible and appears to originate from a controlled water source. No visual evidence of an uncontrolled leak is established. Persistent flow alone is not evidence of leakage.",
+      recommendation:
+        "No uncontrolled leak is established. Check that the fixture is being used as intended; record again if unexpected release or damage is observed.",
+    };
+  }
   const sentences = ["Water is visible in the sampled frames."];
+  sentences.push(
+    "The visible source suggests an unexpected water release. Inspection is needed to determine the cause.",
+  );
   if (activeFlow === "YES")
     sentences.push("Sustained water movement appears across several moments.");
   if (source === "YES")
@@ -190,6 +261,7 @@ export function scoreEvidence(raw: unknown): AnalysisResult {
     waterConfidence: null,
     activeFlowProbability: null,
     activeFlow,
+    sourceType: assessedSource,
     persistentSource: source === "UNCERTAIN" ? null : source === "YES",
     spreadingDetected: spreading === "UNCERTAIN" ? null : spreading === "YES",
     leakRisk,

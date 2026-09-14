@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { analysisResultSchema } from "@/lib/analysis/result-schema";
+import { deriveLeakRisk } from "@/lib/analysis/scoring";
 export const statusSchema = z.enum([
   "NEW",
   "IN_REVIEW",
@@ -82,17 +83,24 @@ export const realCreateReportSchema = createReportSchema
     "Demo reports cannot be submitted remotely.",
   )
   .refine(({ analysis }) => {
-    const yes = [
-      analysis.activeFlow === "YES",
-      analysis.persistentSource === true,
-      analysis.spreadingDetected === true,
-    ].filter(Boolean).length;
-    const expected =
-      analysis.waterEvidence === "STRONG" && yes === 3
-        ? "HIGH"
-        : yes > 0
-          ? "MEDIUM"
-          : "LOW";
+    if (!analysis.sourceType) return false;
+    const expected = deriveLeakRisk(
+      analysis.waterEvidence ?? "NONE",
+      [
+        analysis.activeFlow ?? "UNCERTAIN",
+        analysis.persistentSource === null
+          ? "UNCERTAIN"
+          : analysis.persistentSource
+            ? "YES"
+            : "NO",
+        analysis.spreadingDetected === null
+          ? "UNCERTAIN"
+          : analysis.spreadingDetected
+            ? "YES"
+            : "NO",
+      ],
+      analysis.sourceType,
+    );
     return (
       analysis.leakRisk === expected &&
       !(

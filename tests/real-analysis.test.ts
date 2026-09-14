@@ -17,6 +17,8 @@ const water: VisionEvidence = {
   activeFlowFrames: [],
   persistentSourceFrames: [],
   spreadingFrames: [],
+  sourceType: "SUSPICIOUS_SOURCE",
+  sourceSupportingFrames: [0, 5],
   evidence: [],
 };
 describe("defensive real evidence scoring", () => {

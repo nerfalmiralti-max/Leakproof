@@ -34,7 +34,14 @@ export function EvidenceSummary({
         </p>
       </div>
     );
-  if (result.leakRisk === "UNCERTAIN")
+  if (
+    result.leakRisk === "UNCERTAIN" &&
+    !(
+      result.waterDetected &&
+      result.quality === "GOOD" &&
+      result.sourceType === "UNCERTAIN_SOURCE"
+    )
+  )
     return (
       <div className="rounded-xl border border-[#e8ddbd] bg-[#fbf8ef] p-5">
         <Focus size={22} className="mb-3 text-[#887637]" />
@@ -71,8 +78,15 @@ export function EvidenceSummary({
           },
           {
             icon: Focus,
-            label: "Persistent source",
-            value: booleanText(result.persistentSource),
+            label: "Source assessment",
+            value:
+              result.sourceType === "CONTROLLED_SOURCE"
+                ? "Controlled source"
+                : result.sourceType === "SUSPICIOUS_SOURCE"
+                  ? "Suspicious source"
+                  : result.sourceType === "UNCERTAIN_SOURCE"
+                    ? "Uncertain source"
+                    : "Not assessed",
             hint: "Visible origin, not pipe diagnosis",
           },
           {

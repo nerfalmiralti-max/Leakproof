@@ -9,6 +9,8 @@ const water = {
   waterSupportingFrames: [0, 5],
 };
 const temporal = {
+  sourceType: "SUSPICIOUS_SOURCE",
+  sourceSupportingFrames: [0, 5],
   activeFlow: "YES",
   activeFlowSupportingFrames: [0, 2, 5],
   persistentSource: "YES",
@@ -44,6 +46,41 @@ afterEach(() => {
 });
 
 describe("two-stage vision orchestration", () => {
+  it.each([
+    ["CONTROLLED_SOURCE", "LOW"],
+    ["UNCERTAIN_SOURCE", "UNCERTAIN"],
+  ])(
+    "maps Terra source %s to %s without an extra API call",
+    async (sourceType, leakRisk) => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(reply(water))
+        .mockResolvedValueOnce(
+          reply({
+            ...temporal,
+            sourceType,
+            sourceSupportingFrames:
+              sourceType === "UNCERTAIN_SOURCE" ? [] : [0, 5],
+          }),
+        );
+      vi.stubGlobal("fetch", fetchMock);
+      expect(await analyseFramesOnServer(frames)).toMatchObject({
+        sourceType,
+        leakRisk,
+        activeFlow: "YES",
+        waterDetected: true,
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const request = JSON.parse(fetchMock.mock.calls[1][1].body);
+      expect(request.instructions).toContain(
+        "Persistent flow alone is NOT evidence of a leak",
+      );
+      expect(request.text.format.schema.required).toContain("sourceType");
+      expect(request.text.format.schema.required).toContain(
+        "sourceSupportingFrames",
+      );
+    },
+  );
   it.each([
     [[0, 5, 5, 99], [0, 5], 5, "PASS"],
     [[1, 2, -1], [1, 2], 1, "NO_WATER"],
@@ -168,7 +205,7 @@ describe("two-stage vision orchestration", () => {
     },
   );
 
-  it("confirmed running water calls Terra once with the same frames and scores MEDIUM", async () => {
+  it("confirmed suspicious water calls Terra once with the same frames and scores MEDIUM", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(reply(water))

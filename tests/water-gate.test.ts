@@ -14,6 +14,8 @@ const observation = {
   activeFlowFrames: [],
   persistentSourceFrames: [],
   spreadingFrames: [],
+  sourceType: "SUSPICIOUS_SOURCE",
+  sourceSupportingFrames: [0, 5],
   evidence: [],
 };
 

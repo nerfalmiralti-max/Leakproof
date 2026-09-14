@@ -17,6 +17,10 @@ export const analysisResultSchema = z
     quality: z.enum(["GOOD", "POOR"]).optional(),
     waterEvidence: z.enum(["NONE", "WEAK", "MODERATE", "STRONG"]).optional(),
     activeFlow: z.enum(["NO", "UNCERTAIN", "YES"]).optional(),
+    // Optional for historical saved reports; new provider responses require it.
+    sourceType: z
+      .enum(["CONTROLLED_SOURCE", "UNCERTAIN_SOURCE", "SUSPICIOUS_SOURCE"])
+      .optional(),
   })
   .strict()
   .superRefine((result, context) => {
@@ -49,11 +53,25 @@ export const analysisResultSchema = z
       fail("No-water results cannot claim water detection.");
     if (result.leakRisk === "NO_WATER" || result.leakRisk === "UNCERTAIN") {
       if (
-        downstream.some((value) => value !== null) ||
-        result.activeFlow === "YES"
+        !(
+          result.leakRisk === "UNCERTAIN" &&
+          result.sourceType === "UNCERTAIN_SOURCE" &&
+          result.quality === "GOOD" &&
+          result.waterDetected &&
+          ["MODERATE", "STRONG"].includes(result.waterEvidence ?? "")
+        ) &&
+        (downstream.some((value) => value !== null) ||
+          result.activeFlow === "YES")
       )
         fail("Unassessed results cannot contain downstream evidence.");
     } else {
+      if (
+        result.provider === "openai" &&
+        (result.sourceType === "UNCERTAIN_SOURCE" ||
+          (result.sourceType === "CONTROLLED_SOURCE" &&
+            result.leakRisk !== "LOW"))
+      )
+        fail("Risk must respect source assessment.");
       if (!result.waterDetected)
         fail("Actionable results require water evidence.");
       if (
